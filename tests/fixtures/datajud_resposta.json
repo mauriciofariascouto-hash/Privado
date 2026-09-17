@@ -1,0 +1,37 @@
+{
+  "hits": {
+    "hits": [
+      {
+        "_id": "a1",
+        "sort": ["2024-02-01T10:00:00.000Z", "a1"],
+        "_source": {
+          "numeroProcesso": "03012345620248240023",
+          "grau": "G2",
+          "classe": {"codigo": 198, "nome": "Apelação Cível"},
+          "assuntos": [{"codigo": 10064, "nome": "Servidor Público Civil"}],
+          "orgaoJulgador": {"codigoOrgao": 1234, "nomeOrgao": "Segunda Câmara de Direito Público"},
+          "dataAjuizamento": "2024-01-05T00:00:00.000Z",
+          "movimentos": [
+            {"codigo": 22, "nome": "Conclusão", "dataHora": "2024-01-10T09:00:00.000Z"},
+            {"codigo": 1001, "nome": "Acórdão", "dataHora": "2024-01-25T14:30:00.000Z"}
+          ]
+        }
+      },
+      {
+        "_id": "b2",
+        "sort": ["2024-02-02T10:00:00.000Z", "b2"],
+        "_source": {
+          "numeroProcesso": "50011112220248240000",
+          "grau": "G2",
+          "classe": {"codigo": 202, "nome": "Agravo de Instrumento"},
+          "assuntos": [{"codigo": 9999, "nome": "Contratos Bancários"}],
+          "orgaoJulgador": {"codigoOrgao": 1234, "nomeOrgao": "Segunda Câmara de Direito Público"},
+          "dataAjuizamento": "2024-01-15T00:00:00.000Z",
+          "movimentos": [
+            {"codigo": 2002, "nome": "Decisão Monocrática", "dataHora": "2024-01-26T11:00:00.000Z"}
+          ]
+        }
+      }
+    ]
+  }
+}
