@@ -1,13 +1,12 @@
-Tentativa: 3
-Data/hora: 2026-09-29 23:23:45 UTC
+Tentativa: 4
+Data/hora: 2026-09-29 23:26:53 UTC
 
 DataJud (POST api_publica_tjsc/_search):
 curl: (56) CONNECT tunnel failed, response 403
 000
 
-Google (https://www.google.com):
+Google (GET https://www.google.com):
 curl: (56) CONNECT tunnel failed, response 403
 000
 
-Diagnóstico: o proxy de saída do ambiente rejeitou o CONNECT (connect_rejected)
-para ambos os hosts — política de rede do ambiente, não erro do script.
+Proxy de saída do ambiente recusou o CONNECT (connect_rejected) para ambos os hosts.
