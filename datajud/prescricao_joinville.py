@@ -207,6 +207,114 @@ def analisar(p, hoje, prazo):
     return r
 
 
+# ---------------------------------------------------------------------------
+# Gravação de .xlsx sem dependências (zipfile + SpreadsheetML)
+# ---------------------------------------------------------------------------
+import zipfile
+from xml.sax.saxutils import escape
+
+CABECALHOS = {
+    "numero": "Nº do processo", "classe": "Classe", "orgao": "Órgão julgador",
+    "ajuizamento": "Ajuizamento", "ultimo_movimento": "Último movimento",
+    "ultimo_movimento_desc": "Descrição do último movimento", "tipo": "Prescrição (indício)",
+    "marco_inicial": "Marco inicial", "anos_decorridos": "Anos decorridos",
+    "fundamento": "Fundamento", "observacao": "Observação",
+}
+LARGURAS = {"numero": 27, "classe": 32, "orgao": 36, "ajuizamento": 12, "ultimo_movimento": 12,
+            "ultimo_movimento_desc": 40, "tipo": 30, "marco_inicial": 12, "anos_decorridos": 10,
+            "fundamento": 70, "observacao": 45}
+
+
+def _col(i):
+    s = ""
+    i += 1
+    while i:
+        i, r = divmod(i - 1, 26)
+        s = chr(65 + r) + s
+    return s
+
+
+def _cel(ref, v, estilo=0):
+    if v is None or v == "":
+        return ""
+    if isinstance(v, (int, float)) and not isinstance(v, bool):
+        return f'<c r="{ref}" s="{estilo}"><v>{v}</v></c>'
+    if hasattr(v, "toordinal"):  # date -> serial do Excel
+        return f'<c r="{ref}" s="2"><v>{v.toordinal() - 693594}</v></c>'
+    return f'<c r="{ref}" s="{estilo}" t="inlineStr"><is><t xml:space="preserve">{escape(str(v))}</t></is></c>'
+
+
+def _planilha(campos, linhas, larguras=None):
+    cols = "".join(f'<col min="{i+1}" max="{i+1}" width="{(larguras or {}).get(c, 18)}" customWidth="1"/>'
+                   for i, c in enumerate(campos))
+    rows = ['<row r="1">' + "".join(_cel(f"{_col(i)}1", CABECALHOS.get(c, c), 1) for i, c in enumerate(campos)) + "</row>"]
+    for n, l in enumerate(linhas, start=2):
+        rows.append(f'<row r="{n}">' + "".join(_cel(f"{_col(i)}{n}", l.get(c)) for i, c in enumerate(campos)) + "</row>")
+    ult = f"{_col(len(campos)-1)}{max(len(linhas)+1, 1)}"
+    return ('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+            '<sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>'
+            f'<cols>{cols}</cols><sheetData>{"".join(rows)}</sheetData>'
+            f'<autoFilter ref="A1:{ult}"/></worksheet>')
+
+
+def gravar_xlsx(caminho, abas):
+    """abas: lista de (nome, campos, linhas, larguras)."""
+    estilos = ('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+               '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+               '<numFmts count="1"><numFmt numFmtId="164" formatCode="dd/mm/yyyy"/></numFmts>'
+               '<fonts count="2"><font><sz val="11"/><name val="Calibri"/></font>'
+               '<font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font></fonts>'
+               '<fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill>'
+               '<fill><patternFill patternType="solid"><fgColor rgb="FF1F4E78"/></patternFill></fill></fills>'
+               '<borders count="1"><border/></borders><cellStyleXfs count="1"><xf/></cellStyleXfs>'
+               '<cellXfs count="3"><xf applyAlignment="1"><alignment vertical="top" wrapText="1"/></xf>'
+               '<xf fontId="1" fillId="2" applyFont="1" applyFill="1" applyAlignment="1"><alignment vertical="center" wrapText="1"/></xf>'
+               '<xf numFmtId="164" applyNumberFormat="1" applyAlignment="1"><alignment vertical="top"/></xf></cellXfs>'
+               '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>')
+    with zipfile.ZipFile(caminho, "w", zipfile.ZIP_DEFLATED) as z:
+        z.writestr("[Content_Types].xml",
+                   '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+                   '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
+                   '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
+                   '<Default Extension="xml" ContentType="application/xml"/>'
+                   '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'
+                   '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>'
+                   + "".join(f'<Override PartName="/xl/worksheets/sheet{i+1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>' for i in range(len(abas)))
+                   + "</Types>")
+        z.writestr("_rels/.rels",
+                   '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+                   '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+                   '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>'
+                   '</Relationships>')
+        z.writestr("xl/workbook.xml",
+                   '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+                   '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>'
+                   + "".join(f'<sheet name="{escape(a[0])}" sheetId="{i+1}" r:id="rId{i+1}"/>' for i, a in enumerate(abas))
+                   + "</sheets><definedNames>"
+                   + "".join(f'<definedName name="_xlnm._FilterDatabase" localSheetId="{i}" hidden="1">\'{a[0]}\'!$A$1:${_col(len(a[1])-1)}${max(len(a[2])+1,1)}</definedName>' for i, a in enumerate(abas))
+                   + "</definedNames></workbook>")
+        z.writestr("xl/_rels/workbook.xml.rels",
+                   '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+                   '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+                   + "".join(f'<Relationship Id="rId{i+1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet{i+1}.xml"/>' for i in range(len(abas)))
+                   + f'<Relationship Id="rId{len(abas)+1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>'
+                   "</Relationships>")
+        z.writestr("xl/styles.xml", estilos)
+        for i, (nome, campos, linhas, larg) in enumerate(abas):
+            z.writestr(f"xl/worksheets/sheet{i+1}.xml", _planilha(campos, linhas, larg))
+
+
+CRITERIOS = [
+    ("INTERCORRENTE", "Última suspensão/arquivamento provisório sem constrição posterior; decorridos 1 ano + prazo prescricional (art. 921, §§ 1º a 4º-A, CPC; IAC 1/STJ)."),
+    ("INTERCORRENTE (a vencer em até 1 ano)", "Mesma hipótese, com vencimento nos próximos 12 meses."),
+    ("INTERCORRENTE (paralisação)", "Sem movimentação há mais de 1 ano + prazo prescricional, mesmo sem suspensão formal."),
+    ("DIRETA", "Cumprimento de sentença iniciado mais de <prazo> anos após o trânsito em julgado (Súmula 150/STF)."),
+    ("Aviso", "Triagem automatizada a partir de metadados do DataJud. Conferir cada caso nos autos (eproc/TJSC). "
+              "Execução de título extrajudicial: o DataJud não informa o vencimento do título; prescrição direta deve ser verificada manualmente."),
+]
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--listar-orgaos", action="store_true", help="lista órgãos julgadores de Joinville")
@@ -251,12 +359,22 @@ def main():
         w.writeheader()
         w.writerows(presc)
 
+    crit = [{"tipo": t, "fundamento": d.replace("<prazo>", f"{a.prazo_anos:g}")} for t, d in CRITERIOS]
+    crit.append({"tipo": "Prazo prescricional usado", "fundamento": f"{a.prazo_anos:g} anos"})
+    crit.append({"tipo": "Data da extração", "fundamento": hoje.strftime("%d/%m/%Y %H:%M UTC")})
+    xlsx = os.path.join(a.saida, "prescricao_4vc_joinville.xlsx")
+    gravar_xlsx(xlsx, [
+        ("Prescritos", campos, presc, LARGURAS),
+        ("Todos", campos, linhas, LARGURAS),
+        ("Critérios", ["tipo", "fundamento"], crit, {"tipo": 38, "fundamento": 110}),
+    ])
+
     orgaos = sorted({l["orgao"] for l in linhas})
     print(f"Órgão(s) considerado(s): {orgaos}")
     print(f"Processos de execução/cumprimento: {len(linhas)}")
     for t in sorted({l["tipo"] for l in presc}):
         print(f"  {t}: {sum(1 for l in presc if l['tipo'] == t)}")
-    print(f"Arquivos em {a.saida}/ (prescritos.csv, todos.csv, bruto.json)")
+    print(f"Arquivos em {a.saida}/ (prescricao_4vc_joinville.xlsx, prescritos.csv, todos.csv, bruto.json)")
 
 
 if __name__ == "__main__":

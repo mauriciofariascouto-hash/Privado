@@ -8,7 +8,7 @@ python3 prescricao_joinville.py --orgao-codigo <COD>     # ou sem o parâmetro (
 python3 prescricao_joinville.py --prazo-anos 3           # títulos cambiais (padrão: 5 anos)
 ```
 
-Saída em `resultado/`: `prescritos.csv` (lista pedida), `todos.csv`, `bruto.json`.
+Saída em `resultado/`: **`prescricao_4vc_joinville.xlsx`** (abas Prescritos, Todos e Critérios; gerado sem dependências), `prescritos.csv`, `todos.csv`, `bruto.json`.
 
 ## Critérios (triagem, não substitui a leitura dos autos)
 - **INTERCORRENTE**: última suspensão ou arquivamento provisório sem penhora, bloqueio ou outra constrição
