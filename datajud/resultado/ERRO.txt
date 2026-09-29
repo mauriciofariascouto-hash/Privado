@@ -1,8 +1,13 @@
-Tentativa: 2
-Data: Tue Sep 29 23:22:05 UTC 2026
-Comando: curl POST https://api-publica.datajud.cnj.jus.br/api_publica_tjsc/_search
-HTTP code: 000
-Erro: curl: (56) CONNECT tunnel failed, response 403
-Detalhe do proxy: api-publica.datajud.cnj.jus.br:443 — connect_rejected (gateway answered 403 to CONNECT: policy denial or upstream failure)
+Tentativa: 3
+Data/hora: 2026-09-29 23:23:45 UTC
 
-Solução: liberar o host api-publica.datajud.cnj.jus.br na política de rede do ambiente (Claude Code on the web > ambiente > Network access).
+DataJud (POST api_publica_tjsc/_search):
+curl: (56) CONNECT tunnel failed, response 403
+000
+
+Google (https://www.google.com):
+curl: (56) CONNECT tunnel failed, response 403
+000
+
+Diagnóstico: o proxy de saída do ambiente rejeitou o CONNECT (connect_rejected)
+para ambos os hosts — política de rede do ambiente, não erro do script.
